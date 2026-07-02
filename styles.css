@@ -1,0 +1,152 @@
+/* ===== Recipe Mode — cooking view ===== */
+
+.recipe-cooking-view {
+  padding: var(--size-4-4) var(--size-4-6);
+  overflow-y: auto;
+  /* Kitchen mode: everything a notch bigger than the editor. */
+  font-size: 1.15em;
+  line-height: 1.55;
+  user-select: none;
+}
+
+.recipe-header {
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: var(--size-4-3);
+  margin-bottom: var(--size-4-4);
+}
+
+.recipe-title {
+  margin: 0 0 var(--size-4-2) 0;
+  font-size: 1.8em;
+}
+
+.recipe-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+  margin-bottom: var(--size-4-3);
+}
+
+.recipe-chip {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l);
+  padding: 2px 10px;
+  font-size: 0.8em;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.recipe-chip-label {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 0.75em;
+  letter-spacing: 0.05em;
+}
+
+.recipe-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-4);
+  flex-wrap: wrap;
+}
+
+.recipe-servings {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+.recipe-servings-label {
+  color: var(--text-muted);
+}
+
+.recipe-serving-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+}
+
+.recipe-serving-btn {
+  /* Big touch targets for floury fingers. */
+  width: 2.2em;
+  height: 2.2em;
+  font-size: 1.1em;
+  border-radius: var(--radius-m);
+  cursor: pointer;
+}
+
+.recipe-serving-value {
+  min-width: 2ch;
+  text-align: center;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.recipe-unit-toggle {
+  cursor: pointer;
+  border-radius: var(--radius-m);
+}
+
+/* --- two panes, stacking on narrow --- */
+.recipe-body {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 2fr;
+  gap: var(--size-4-6);
+}
+
+@media (max-width: 700px) {
+  .recipe-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.recipe-ingredients,
+.recipe-steps {
+  padding-left: 1.4em;
+  margin: 0.4em 0 1em;
+}
+
+.recipe-ingredient,
+.recipe-step {
+  cursor: pointer;
+  padding: 0.3em 0.2em;
+  border-radius: var(--radius-s);
+  transition: opacity 120ms ease, background-color 120ms ease;
+}
+
+.recipe-ingredient:hover,
+.recipe-step:hover {
+  background: var(--background-modifier-hover);
+}
+
+.recipe-ingredient.is-done,
+.recipe-step.is-done {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.recipe-step {
+  margin-bottom: 0.5em;
+}
+
+.recipe-group-name {
+  margin: 0.8em 0 0.2em;
+  font-size: 1em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.recipe-empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.recipe-source {
+  margin-top: var(--size-4-6);
+  font-size: 0.85em;
+  color: var(--text-faint);
+  overflow-wrap: anywhere;
+}

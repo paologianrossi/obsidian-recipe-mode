@@ -1,0 +1,9 @@
+{
+  "id": "recipe-mode",
+  "name": "Recipe Mode",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Recipes in Obsidian: kitchen-friendly cooking view, ingredient scaling, web import, and shopping lists. English and Italian units supported.",
+  "author": "Paolo Gianrossi",
+  "isDesktopOnly": false
+}
