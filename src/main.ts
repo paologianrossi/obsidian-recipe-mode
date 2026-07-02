@@ -2,6 +2,7 @@ import { Editor, Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
 import { DEFAULT_SETTINGS, RecipeModeSettings, RecipeModeSettingTab } from "./settings";
 import { COOKING_VIEW_TYPE, CookingView } from "./ui/cooking-view";
 import { NewRecipeModal, formatSelectionAsIngredients } from "./ui/editor-commands";
+import { ImportRecipeModal } from "./ui/import-modal";
 
 export default class RecipeModePlugin extends Plugin {
   settings: RecipeModeSettings = DEFAULT_SETTINGS;
@@ -37,6 +38,12 @@ export default class RecipeModePlugin extends Plugin {
       id: "format-ingredients",
       name: "Format selection as ingredients",
       editorCallback: (editor: Editor) => formatSelectionAsIngredients(editor),
+    });
+
+    this.addCommand({
+      id: "import-recipe",
+      name: "Import recipe from URL",
+      callback: () => new ImportRecipeModal(this.app, this).open(),
     });
   }
 

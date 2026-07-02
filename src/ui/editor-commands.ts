@@ -46,21 +46,33 @@ export class NewRecipeModal extends Modal {
   }
 }
 
-export async function createRecipeNote(plugin: RecipeModePlugin, title: string): Promise<TFile | null> {
+/** Create a note in the recipe folder, deduplicating the filename. */
+export async function createUniqueNote(
+  plugin: RecipeModePlugin,
+  title: string,
+  content: string,
+): Promise<TFile | null> {
   const { app, settings } = plugin;
   const folder = settings.recipeFolder.trim();
   if (folder && !app.vault.getFolderByPath(normalizePath(folder))) {
     await app.vault.createFolder(normalizePath(folder));
   }
-  const safe = title.replace(/[\\/:*?"<>|#^\[\]]/g, "-");
+  const safe = title.replace(/[\\/:*?"<>|#^\[\]]/g, "-").trim() || "Recipe";
   let path = normalizePath(folder ? `${folder}/${safe}.md` : `${safe}.md`);
-  if (app.vault.getAbstractFileByPath(path)) {
-    let n = 2;
-    while (app.vault.getAbstractFileByPath(path)) {
-      path = normalizePath(folder ? `${folder}/${safe} ${n}.md` : `${safe} ${n}.md`);
-      n++;
-    }
+  let n = 2;
+  while (app.vault.getAbstractFileByPath(path)) {
+    path = normalizePath(folder ? `${folder}/${safe} ${n}.md` : `${safe} ${n}.md`);
+    n++;
   }
+  try {
+    return await app.vault.create(path, content);
+  } catch (e) {
+    new Notice(`Could not create recipe: ${String(e)}`);
+    return null;
+  }
+}
+
+export async function createRecipeNote(plugin: RecipeModePlugin, title: string): Promise<TFile | null> {
   const content = recipeToMarkdown(
     {
       title,
@@ -69,14 +81,9 @@ export async function createRecipeNote(plugin: RecipeModePlugin, title: string):
       ingredients: [],
       steps: [],
     },
-    { locale: settings.locale, recipeTag: settings.recipeTag },
+    { locale: plugin.settings.locale, recipeTag: plugin.settings.recipeTag },
   );
-  try {
-    return await app.vault.create(path, content);
-  } catch (e) {
-    new Notice(`Could not create recipe: ${String(e)}`);
-    return null;
-  }
+  return createUniqueNote(plugin, title, content);
 }
 
 /**
