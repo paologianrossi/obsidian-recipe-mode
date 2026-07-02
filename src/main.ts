@@ -1,6 +1,7 @@
-import { Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
+import { Editor, Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
 import { DEFAULT_SETTINGS, RecipeModeSettings, RecipeModeSettingTab } from "./settings";
 import { COOKING_VIEW_TYPE, CookingView } from "./ui/cooking-view";
+import { NewRecipeModal, formatSelectionAsIngredients } from "./ui/editor-commands";
 
 export default class RecipeModePlugin extends Plugin {
   settings: RecipeModeSettings = DEFAULT_SETTINGS;
@@ -24,6 +25,18 @@ export default class RecipeModePlugin extends Plugin {
         if (!checking) void this.openCookingView(file);
         return true;
       },
+    });
+
+    this.addCommand({
+      id: "new-recipe",
+      name: "New recipe",
+      callback: () => new NewRecipeModal(this.app, this).open(),
+    });
+
+    this.addCommand({
+      id: "format-ingredients",
+      name: "Format selection as ingredients",
+      editorCallback: (editor: Editor) => formatSelectionAsIngredients(editor),
     });
   }
 
