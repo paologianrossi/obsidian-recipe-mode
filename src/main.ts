@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS, RecipeModeSettings, RecipeModeSettingTab } from "./se
 import { COOKING_VIEW_TYPE, CookingView } from "./ui/cooking-view";
 import { NewRecipeModal, formatSelectionAsIngredients } from "./ui/editor-commands";
 import { ImportRecipeModal } from "./ui/import-modal";
+import { ShoppingListModal, createMealPlanNote, shoppingListFromMealPlan } from "./shopping/shopping-list";
 
 export default class RecipeModePlugin extends Plugin {
   settings: RecipeModeSettings = DEFAULT_SETTINGS;
@@ -44,6 +45,24 @@ export default class RecipeModePlugin extends Plugin {
       id: "import-recipe",
       name: "Import recipe from URL",
       callback: () => new ImportRecipeModal(this.app, this).open(),
+    });
+
+    this.addCommand({
+      id: "shopping-list",
+      name: "Create shopping list from recipes",
+      callback: () => new ShoppingListModal(this.app, this).open(),
+    });
+
+    this.addCommand({
+      id: "new-meal-plan",
+      name: "New meal plan",
+      callback: () => void createMealPlanNote(this),
+    });
+
+    this.addCommand({
+      id: "shopping-list-from-meal-plan",
+      name: "Generate shopping list from meal plan",
+      callback: () => void shoppingListFromMealPlan(this),
     });
   }
 
