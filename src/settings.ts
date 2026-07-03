@@ -19,8 +19,12 @@ export interface RecipeModeSettings {
   recipeFolder: string;
   /** Download the recipe image on web import. */
   downloadImages: boolean;
-  /** Only style notes carrying the recipe tag (default: style any note with an ingredients section). */
-  requireTagForStyling: boolean;
+  /** How a note qualifies as a recipe (styling, Cmd+E cooking swap, shopping lists). */
+  recipeDetection: "content" | "tag" | "folder" | "filename";
+  /** Comma-separated folder paths for "folder" detection. */
+  detectionFolders: string;
+  /** Case-insensitive filename regex for "filename" detection. */
+  detectionPattern: string;
   /** Replace reading mode with the cooking view for recipe notes (Cmd+E toggles edit ⇄ cooking). */
   cookingAsReading: boolean;
   /** Collapse the sidebars while the cooking view is open; restore them on exit. */
@@ -36,7 +40,9 @@ export const DEFAULT_SETTINGS: RecipeModeSettings = {
   wakeLock: true,
   recipeFolder: "Recipes",
   downloadImages: false,
-  requireTagForStyling: false,
+  recipeDetection: "content",
+  detectionFolders: "Recipes",
+  detectionPattern: "^Recipe",
   cookingAsReading: true,
   hideSidebars: true,
 };
@@ -137,17 +143,47 @@ export class RecipeModeSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Only style tagged notes")
-      .setDesc(
-        "When on, reading-mode and editor styling apply only to notes with the recipe tag. " +
-          "When off, any note with a recognizable ingredients section is styled.",
-      )
-      .addToggle((t) =>
-        t.setValue(this.plugin.settings.requireTagForStyling).onChange(async (v) => {
-          this.plugin.settings.requireTagForStyling = v;
-          await this.plugin.saveSettings();
-        }),
+      .setName("Recipe detection")
+      .setDesc("What makes a note a recipe — for styling, the cooking-mode toggle, and shopping lists.")
+      .addDropdown((d) =>
+        d
+          .addOptions({
+            content: "Content (has an ingredients section)",
+            tag: "Recipe tag",
+            folder: "Folder",
+            filename: "Filename pattern",
+          })
+          .setValue(this.plugin.settings.recipeDetection)
+          .onChange(async (v) => {
+            this.plugin.settings.recipeDetection = v as RecipeModeSettings["recipeDetection"];
+            await this.plugin.saveSettings();
+            this.display(); // show/hide the mode-specific fields
+          }),
       );
+
+    if (this.plugin.settings.recipeDetection === "folder") {
+      new Setting(containerEl)
+        .setName("Recipe folders")
+        .setDesc("Comma-separated folders whose notes are recipes.")
+        .addText((t) =>
+          t.setValue(this.plugin.settings.detectionFolders).onChange(async (v) => {
+            this.plugin.settings.detectionFolders = v;
+            await this.plugin.saveSettings();
+          }),
+        );
+    }
+
+    if (this.plugin.settings.recipeDetection === "filename") {
+      new Setting(containerEl)
+        .setName("Filename pattern")
+        .setDesc("Case-insensitive regular expression matched against the note name, e.g. ^Recipe")
+        .addText((t) =>
+          t.setValue(this.plugin.settings.detectionPattern).onChange(async (v) => {
+            this.plugin.settings.detectionPattern = v;
+            await this.plugin.saveSettings();
+          }),
+        );
+    }
 
     new Setting(containerEl)
       .setName("Keep screen awake")

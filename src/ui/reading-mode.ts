@@ -14,10 +14,9 @@ import { chipData, renderChips } from "./chips";
 export function registerReadingModeDecorations(plugin: RecipeModePlugin): void {
   plugin.registerMarkdownPostProcessor((el, ctx) => {
     const cache = plugin.app.metadataCache.getCache(ctx.sourcePath);
-    if (plugin.settings.requireTagForStyling) {
-      if (!cache) return;
-      const want = "#" + plugin.settings.recipeTag.replace(/^#/, "").toLowerCase();
-      if (!(getAllTags(cache) ?? []).some((t) => t.toLowerCase() === want)) return;
+    if (plugin.settings.recipeDetection !== "content") {
+      const file = plugin.app.vault.getFileByPath(ctx.sourcePath);
+      if (!file || !plugin.isRecipeFile(file)) return;
     }
 
     el.addClass("recipe-reading");

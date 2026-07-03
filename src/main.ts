@@ -8,7 +8,7 @@ import { registerReadingModeDecorations } from "./ui/reading-mode";
 import { recipeChipsField, recipeLivePreviewExtension } from "./ui/live-preview";
 
 /** Bumped by hand when it matters that the vault copy is current. */
-const BUILD_TAG = "steps-qty-1";
+const BUILD_TAG = "detect-1";
 
 export default class RecipeModePlugin extends Plugin {
   settings: RecipeModeSettings = DEFAULT_SETTINGS;
@@ -96,19 +96,44 @@ export default class RecipeModePlugin extends Plugin {
     }
   }
 
-  /** A recipe for view purposes: tagged, or (unless tag-gated) has an ingredients heading. */
+  /** A note qualifies as a recipe per the configured detection strategy. */
   isRecipeFile(file: TFile): boolean {
-    const cache = this.app.metadataCache.getFileCache(file);
-    if (!cache) return false;
-    const want = "#" + this.settings.recipeTag.replace(/^#/, "").toLowerCase();
-    const tagged = (getAllTags(cache) ?? []).some((t) => t.toLowerCase() === want);
-    if (this.settings.requireTagForStyling) return tagged;
-    const headings = splitHeadings(this.settings.ingredientHeadings);
-    const hasSection = (cache.headings ?? []).some((h) => {
-      const t = h.heading.toLowerCase().replace(/[:.]+$/, "").trim();
-      return headings.some((x) => t === x || t.startsWith(x + " "));
-    });
-    return tagged || hasSection;
+    switch (this.settings.recipeDetection) {
+      case "tag": {
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (!cache) return false;
+        const want = "#" + this.settings.recipeTag.replace(/^#/, "").toLowerCase();
+        return (getAllTags(cache) ?? []).some((t) => t.toLowerCase() === want);
+      }
+      case "folder": {
+        const path = file.path.toLowerCase();
+        return this.settings.detectionFolders
+          .split(",")
+          .map((f) => f.trim().replace(/\/+$/, "").toLowerCase())
+          .filter(Boolean)
+          .some((f) => path.startsWith(f + "/"));
+      }
+      case "filename": {
+        try {
+          return new RegExp(this.settings.detectionPattern, "i").test(file.basename);
+        } catch {
+          return false; // invalid regex matches nothing
+        }
+      }
+      case "content":
+      default: {
+        // Ingredients heading in the note (or the recipe tag, as a courtesy).
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (!cache) return false;
+        const want = "#" + this.settings.recipeTag.replace(/^#/, "").toLowerCase();
+        if ((getAllTags(cache) ?? []).some((t) => t.toLowerCase() === want)) return true;
+        const headings = splitHeadings(this.settings.ingredientHeadings);
+        return (cache.headings ?? []).some((h) => {
+          const t = h.heading.toLowerCase().replace(/[:.]+$/, "").trim();
+          return headings.some((x) => t === x || t.startsWith(x + " "));
+        });
+      }
+    }
   }
 
   async openCookingView(file?: TFile): Promise<void> {
@@ -133,7 +158,13 @@ export default class RecipeModePlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = ((await this.loadData()) ?? {}) as Record<string, unknown>;
+    // migrate the old boolean gate to the detection dropdown
+    if (data["requireTagForStyling"] === true && data["recipeDetection"] === undefined) {
+      data["recipeDetection"] = "tag";
+    }
+    delete data["requireTagForStyling"];
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
   }
 
   async saveSettings(): Promise<void> {

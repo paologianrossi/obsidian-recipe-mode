@@ -25,18 +25,14 @@ import { chipData, renderChips } from "./chips";
 const LIST_ITEM_RE = /^(\s*(?:[-*+]|\d+[.)])\s+(?:\[.\]\s+)?)(.*)$/;
 
 /**
- * Text-based gate: decorate unless the user restricted styling to tagged
- * notes. Deliberately avoids metadataCache so freshly-edited notes are
- * never skipped because the cache has not caught up yet.
+ * Detection gate. "Content" mode returns true outright: the section scanner
+ * inherently limits decorations to ingredient/step sections and stays free
+ * of metadataCache timing (a stale cache once suppressed all decorations).
  */
 function shouldDecorate(state: EditorState, plugin: RecipeModePlugin): boolean {
-  if (!plugin.settings.requireTagForStyling) return true;
+  if (plugin.settings.recipeDetection === "content") return true;
   const file = state.field(editorInfoField, false)?.file;
-  if (!file) return false;
-  const cache = plugin.app.metadataCache.getFileCache(file);
-  if (!cache) return false;
-  const want = "#" + plugin.settings.recipeTag.replace(/^#/, "").toLowerCase();
-  return (getAllTags(cache) ?? []).some((t) => t.toLowerCase() === want);
+  return file ? plugin.isRecipeFile(file) : false;
 }
 
 /** Frontmatter parsed straight from the document text (cache-independent). */

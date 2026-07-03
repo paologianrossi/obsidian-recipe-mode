@@ -6,14 +6,9 @@ import { parseRecipe } from "../core/parse-recipe";
 import { splitHeadings } from "../settings";
 import { createUniqueNote } from "../ui/editor-commands";
 
-/** All notes carrying the recipe tag (frontmatter or inline). */
+/** All notes qualifying as recipes per the configured detection strategy. */
 export function findRecipeFiles(plugin: RecipeModePlugin): TFile[] {
-  const want = "#" + plugin.settings.recipeTag.replace(/^#/, "").toLowerCase();
-  return plugin.app.vault.getMarkdownFiles().filter((file) => {
-    const cache = plugin.app.metadataCache.getFileCache(file);
-    if (!cache) return false;
-    return (getAllTags(cache) ?? []).some((t) => t.toLowerCase() === want);
-  });
+  return plugin.app.vault.getMarkdownFiles().filter((file) => plugin.isRecipeFile(file));
 }
 
 export async function parseRecipeFile(plugin: RecipeModePlugin, file: TFile): Promise<Recipe> {
