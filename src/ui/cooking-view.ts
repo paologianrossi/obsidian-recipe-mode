@@ -1,4 +1,4 @@
-import { ItemView, TFile, WorkspaceLeaf } from "obsidian";
+import { ItemView, Scope, TFile, WorkspaceLeaf } from "obsidian";
 import type RecipeModePlugin from "../main";
 import type { Recipe } from "../types";
 import { parseRecipe } from "../core/parse-recipe";
@@ -29,6 +29,22 @@ export class CookingView extends ItemView {
   ) {
     super(leaf);
     this.unitSystem = plugin.settings.unitSystem;
+    // Cmd+E in cooking mode returns to editing, mirroring the reading-view toggle.
+    this.scope = new Scope(this.app.scope);
+    this.scope.register(["Mod"], "e", (evt) => {
+      evt.preventDefault();
+      void this.openInEditor();
+      return false;
+    });
+  }
+
+  async openInEditor(): Promise<void> {
+    if (!this.file) return;
+    await this.leaf.setViewState({
+      type: "markdown",
+      active: true,
+      state: { file: this.file.path, mode: "source" },
+    });
   }
 
   getViewType(): string {

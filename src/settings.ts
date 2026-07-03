@@ -21,6 +21,8 @@ export interface RecipeModeSettings {
   downloadImages: boolean;
   /** Only style notes carrying the recipe tag (default: style any note with an ingredients section). */
   requireTagForStyling: boolean;
+  /** Replace reading mode with the cooking view for recipe notes (Cmd+E toggles edit ⇄ cooking). */
+  cookingAsReading: boolean;
 }
 
 export const DEFAULT_SETTINGS: RecipeModeSettings = {
@@ -33,6 +35,7 @@ export const DEFAULT_SETTINGS: RecipeModeSettings = {
   recipeFolder: "Recipes",
   downloadImages: false,
   requireTagForStyling: false,
+  cookingAsReading: true,
 };
 
 export function splitHeadings(csv: string): string[] {
@@ -108,6 +111,16 @@ export class RecipeModeSettingTab extends PluginSettingTab {
             this.plugin.settings.unitSystem = v as RecipeModeSettings["unitSystem"];
             await this.plugin.saveSettings();
           }),
+      );
+
+    new Setting(containerEl)
+      .setName("Cooking mode as reading view")
+      .setDesc("For recipe notes, toggling to reading view (Cmd+E) opens cooking mode instead. Cmd+E in cooking mode returns to editing.")
+      .addToggle((t) =>
+        t.setValue(this.plugin.settings.cookingAsReading).onChange(async (v) => {
+          this.plugin.settings.cookingAsReading = v;
+          await this.plugin.saveSettings();
+        }),
       );
 
     new Setting(containerEl)
