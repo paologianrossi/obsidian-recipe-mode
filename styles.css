@@ -150,8 +150,8 @@
   margin: 0.4em 0 0.8em;
 }
 
-.recipe-reading .recipe-qty,
-.recipe-reading-ingredients .recipe-qty {
+/* Quantity highlight — reading mode spans and Live Preview marks alike. */
+.recipe-qty {
   color: var(--color-accent);
   font-weight: 600;
   font-variant-numeric: tabular-nums;

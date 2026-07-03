@@ -62,7 +62,7 @@ class ChipsWidget extends WidgetType {
   }
 }
 
-function buildChips(state: EditorState, plugin: RecipeModePlugin): DecorationSet {
+export function buildChips(state: EditorState, plugin: RecipeModePlugin): DecorationSet {
   if (!shouldDecorate(state, plugin)) return Decoration.none;
   const chips = chipData(docFrontmatter(state));
   if (chips.length === 0) return Decoration.none;
@@ -113,10 +113,10 @@ function conversionText(itemText: string, plugin: RecipeModePlugin): string | un
   const def = getUnit(q.unit);
   if (!def || def.toBase === undefined || def.system === "neutral") return undefined;
 
-  // Follow the unit-system setting; with "as written", annotate with the other system.
-  const setting = plugin.settings.unitSystem;
-  const target =
-    setting !== "original" ? setting : def.system === "metric" ? ("imperial" as const) : ("metric" as const);
+  // Always annotate with the complementary system: metric quantities get the
+  // imperial reading and vice versa, whatever the unit-system setting says
+  // (the setting still drives the cooking view's conversion).
+  const target = def.system === "metric" ? ("imperial" as const) : ("metric" as const);
   const conv = toSystem(q.value, q.unit, target);
   if (!conv) return undefined;
 
@@ -124,10 +124,10 @@ function conversionText(itemText: string, plugin: RecipeModePlugin): string | un
   return `${formatValue(conv.value, locale, false)} ${displayUnit(conv.unit, conv.value, locale)}`;
 }
 
-function buildInline(view: EditorView, plugin: RecipeModePlugin): DecorationSet {
-  if (!shouldDecorate(view.state, plugin)) return Decoration.none;
+export function buildInline(state: EditorState, plugin: RecipeModePlugin): DecorationSet {
+  if (!shouldDecorate(state, plugin)) return Decoration.none;
 
-  const doc = view.state.doc;
+  const doc = state.doc;
   const lines: string[] = [];
   for (let i = 1; i <= doc.lines; i++) lines.push(doc.line(i).text);
   const kinds = computeSectionKinds(
@@ -135,7 +135,7 @@ function buildInline(view: EditorView, plugin: RecipeModePlugin): DecorationSet 
     splitHeadings(plugin.settings.ingredientHeadings),
     splitHeadings(plugin.settings.stepHeadings),
   );
-  const cursorLine = doc.lineAt(view.state.selection.main.head).number - 1;
+  const cursorLine = doc.lineAt(state.selection.main.head).number - 1;
 
   const builder = new RangeSetBuilder<Decoration>();
   for (let i = 0; i < lines.length; i++) {
@@ -184,13 +184,13 @@ export function recipeLivePreviewExtension(plugin: RecipeModePlugin) {
       decorations: DecorationSet;
 
       constructor(view: EditorView) {
-        this.decorations = buildInline(view, plugin);
+        this.decorations = buildInline(view.state, plugin);
       }
 
       update(update: ViewUpdate) {
         // Recipe notes are small; a full rebuild on change is cheap and simple.
         if (update.docChanged || update.viewportChanged || update.selectionSet || update.focusChanged) {
-          this.decorations = buildInline(update.view, plugin);
+          this.decorations = buildInline(update.state, plugin);
         }
       }
     },
