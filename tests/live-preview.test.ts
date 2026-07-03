@@ -7,6 +7,8 @@ import { DEFAULT_SETTINGS } from "../src/settings";
 import type RecipeModePlugin from "../src/main";
 
 const plugin = { settings: { ...DEFAULT_SETTINGS } } as unknown as RecipeModePlugin;
+const withSystem = (unitSystem: string) =>
+  ({ settings: { ...DEFAULT_SETTINGS, unitSystem } }) as unknown as RecipeModePlugin;
 
 const DEMO = `---
 tags:
@@ -54,34 +56,40 @@ function stateOf(doc: string): EditorState {
 }
 
 describe("buildInline (live preview decorations)", () => {
-  it("produces quantity marks and conversion widgets for the demo note", () => {
+  it("produces quantity marks; no ghosts with the default 'as written' setting", () => {
     const result = classify(buildInline(stateOf(DEMO), plugin));
     // 3 quantified ingredient lines → 3 marks
     expect(result.marks).toBe(3);
-    // 400 g → oz, 1,5 l → quarts; "2 cucchiai" is neutral → no conversion
-    expect(result.widgets).toBe(2);
-    expect(result.widgetTexts.join(" | ")).toMatch(/oz/);
+    // no unit-system preference → no conversion ghosts
+    expect(result.widgets).toBe(0);
     // line decorations for every line in both sections
     expect(result.lines).toBeGreaterThan(5);
+  });
+
+  it("imperial preference annotates the metric quantities", () => {
+    // 400 g → oz, 1,5 l → quarts; "2 cucchiai" is neutral → no conversion
+    const result = classify(buildInline(stateOf(DEMO), withSystem("imperial")));
+    expect(result.marks).toBe(3);
+    expect(result.widgets).toBe(2);
+    expect(result.widgetTexts.join(" | ")).toMatch(/oz/);
+  });
+
+  it("metric preference leaves an all-metric recipe clean", () => {
+    const result = classify(buildInline(stateOf(DEMO), withSystem("metric")));
+    expect(result.widgets).toBe(0);
+    // but an imperial line gets its metric ghost
+    const mixed = DEMO.replace("- 400 g pasta", "- 2 cups flour");
+    const mixedResult = classify(buildInline(stateOf(mixed), withSystem("metric")));
+    expect(mixedResult.widgets).toBe(1);
+    expect(mixedResult.widgetTexts.join(" ")).toMatch(/ml|l/);
   });
 
   it("cursor on a line suppresses its conversion widget but keeps the mark", () => {
     const pos = DEMO.indexOf("400 g");
     const state = EditorState.create({ doc: DEMO, selection: { anchor: pos } });
-    const result = classify(buildInline(state, plugin));
+    const result = classify(buildInline(state, withSystem("imperial")));
     expect(result.marks).toBe(3);
     expect(result.widgets).toBe(1); // the 1,5 l one survives
-  });
-
-  it("still annotates metric quantities when the unit-system setting is metric", () => {
-    // Regression: with target=metric and an all-metric recipe there was
-    // nothing to convert, so no ghosts appeared at all.
-    const metricPlugin = {
-      settings: { ...DEFAULT_SETTINGS, unitSystem: "metric" },
-    } as unknown as RecipeModePlugin;
-    const result = classify(buildInline(stateOf(DEMO), metricPlugin));
-    expect(result.widgets).toBe(2);
-    expect(result.widgetTexts.join(" | ")).toMatch(/oz/); // complementary system
   });
 
   it("decorates untagged notes too (no gating by default)", () => {

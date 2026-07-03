@@ -113,10 +113,11 @@ function conversionText(itemText: string, plugin: RecipeModePlugin): string | un
   const def = getUnit(q.unit);
   if (!def || def.toBase === undefined || def.system === "neutral") return undefined;
 
-  // Always annotate with the complementary system: metric quantities get the
-  // imperial reading and vice versa, whatever the unit-system setting says
-  // (the setting still drives the cooking view's conversion).
-  const target = def.system === "metric" ? ("imperial" as const) : ("metric" as const);
+  // Annotate only toward the preferred system: with a metric preference,
+  // imperial quantities get a metric ghost and metric ones stay clean.
+  // "As written" means no preference, so no ghosts.
+  const target = plugin.settings.unitSystem;
+  if (target === "original" || def.system === target) return undefined;
   const conv = toSystem(q.value, q.unit, target);
   if (!conv) return undefined;
 
