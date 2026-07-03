@@ -7,10 +7,14 @@ import { ShoppingListModal, createMealPlanNote, shoppingListFromMealPlan } from 
 import { registerReadingModeDecorations } from "./ui/reading-mode";
 import { recipeChipsField, recipeLivePreviewExtension } from "./ui/live-preview";
 
+/** Bumped by hand when it matters that the vault copy is current. */
+const BUILD_TAG = "lp-always-1";
+
 export default class RecipeModePlugin extends Plugin {
   settings: RecipeModeSettings = DEFAULT_SETTINGS;
 
   async onload(): Promise<void> {
+    console.log(`Recipe Mode v${this.manifest.version} loaded (build ${BUILD_TAG})`);
     await this.loadSettings();
     this.addSettingTab(new RecipeModeSettingTab(this.app, this));
 

@@ -19,6 +19,8 @@ export interface RecipeModeSettings {
   recipeFolder: string;
   /** Download the recipe image on web import. */
   downloadImages: boolean;
+  /** Only style notes carrying the recipe tag (default: style any note with an ingredients section). */
+  requireTagForStyling: boolean;
 }
 
 export const DEFAULT_SETTINGS: RecipeModeSettings = {
@@ -30,6 +32,7 @@ export const DEFAULT_SETTINGS: RecipeModeSettings = {
   wakeLock: true,
   recipeFolder: "Recipes",
   downloadImages: false,
+  requireTagForStyling: false,
 };
 
 export function splitHeadings(csv: string): string[] {
@@ -105,6 +108,19 @@ export class RecipeModeSettingTab extends PluginSettingTab {
             this.plugin.settings.unitSystem = v as RecipeModeSettings["unitSystem"];
             await this.plugin.saveSettings();
           }),
+      );
+
+    new Setting(containerEl)
+      .setName("Only style tagged notes")
+      .setDesc(
+        "When on, reading-mode and editor styling apply only to notes with the recipe tag. " +
+          "When off, any note with a recognizable ingredients section is styled.",
+      )
+      .addToggle((t) =>
+        t.setValue(this.plugin.settings.requireTagForStyling).onChange(async (v) => {
+          this.plugin.settings.requireTagForStyling = v;
+          await this.plugin.saveSettings();
+        }),
       );
 
     new Setting(containerEl)

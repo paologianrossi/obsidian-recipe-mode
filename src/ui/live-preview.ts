@@ -15,7 +15,7 @@ import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetTy
 import { editorInfoField, getAllTags } from "obsidian";
 import type RecipeModePlugin from "../main";
 import { matchQuantityPrefix, parseIngredient } from "../core/parse-ingredient";
-import { computeSectionKinds } from "../core/parse-recipe";
+import { computeSectionKinds, parseFrontmatter } from "../core/parse-recipe";
 import { formatValue } from "../core/scale";
 import { displayUnit, getUnit, toSystem } from "../core/units";
 import { splitHeadings } from "../settings";
@@ -23,14 +23,25 @@ import { chipData, renderChips } from "./chips";
 
 const LIST_ITEM_RE = /^(\s*(?:[-*+]|\d+[.)])\s+(?:\[.\]\s+)?)(.*)$/;
 
-function isRecipeState(state: EditorState, plugin: RecipeModePlugin) {
+/**
+ * Text-based gate: decorate unless the user restricted styling to tagged
+ * notes. Deliberately avoids metadataCache so freshly-edited notes are
+ * never skipped because the cache has not caught up yet.
+ */
+function shouldDecorate(state: EditorState, plugin: RecipeModePlugin): boolean {
+  if (!plugin.settings.requireTagForStyling) return true;
   const file = state.field(editorInfoField, false)?.file;
-  if (!file) return null;
+  if (!file) return false;
   const cache = plugin.app.metadataCache.getFileCache(file);
-  if (!cache) return null;
+  if (!cache) return false;
   const want = "#" + plugin.settings.recipeTag.replace(/^#/, "").toLowerCase();
-  if (!(getAllTags(cache) ?? []).some((t) => t.toLowerCase() === want)) return null;
-  return cache;
+  return (getAllTags(cache) ?? []).some((t) => t.toLowerCase() === want);
+}
+
+/** Frontmatter parsed straight from the document text (cache-independent). */
+function docFrontmatter(state: EditorState): Record<string, unknown> {
+  const head = state.doc.sliceString(0, Math.min(state.doc.length, 4000));
+  return parseFrontmatter(head).frontmatter;
 }
 
 /* ---------- meta chips under the title (block widget via StateField) ---------- */
@@ -52,9 +63,8 @@ class ChipsWidget extends WidgetType {
 }
 
 function buildChips(state: EditorState, plugin: RecipeModePlugin): DecorationSet {
-  const cache = isRecipeState(state, plugin);
-  if (!cache) return Decoration.none;
-  const chips = chipData(cache.frontmatter ?? {});
+  if (!shouldDecorate(state, plugin)) return Decoration.none;
+  const chips = chipData(docFrontmatter(state));
   if (chips.length === 0) return Decoration.none;
 
   // Find the first H1 in the leading part of the note.
@@ -115,7 +125,7 @@ function conversionText(itemText: string, plugin: RecipeModePlugin): string | un
 }
 
 function buildInline(view: EditorView, plugin: RecipeModePlugin): DecorationSet {
-  if (!isRecipeState(view.state, plugin)) return Decoration.none;
+  if (!shouldDecorate(view.state, plugin)) return Decoration.none;
 
   const doc = view.state.doc;
   const lines: string[] = [];

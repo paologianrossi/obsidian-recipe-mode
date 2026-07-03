@@ -14,15 +14,17 @@ import { chipData, renderChips } from "./chips";
 export function registerReadingModeDecorations(plugin: RecipeModePlugin): void {
   plugin.registerMarkdownPostProcessor((el, ctx) => {
     const cache = plugin.app.metadataCache.getCache(ctx.sourcePath);
-    if (!cache) return;
-    const want = "#" + plugin.settings.recipeTag.replace(/^#/, "").toLowerCase();
-    if (!(getAllTags(cache) ?? []).some((t) => t.toLowerCase() === want)) return;
+    if (plugin.settings.requireTagForStyling) {
+      if (!cache) return;
+      const want = "#" + plugin.settings.recipeTag.replace(/^#/, "").toLowerCase();
+      if (!(getAllTags(cache) ?? []).some((t) => t.toLowerCase() === want)) return;
+    }
 
     el.addClass("recipe-reading");
 
     // Title block: append meta chips read from frontmatter.
     const h1 = el.querySelector("h1");
-    if (h1) appendChips(h1, cache.frontmatter ?? {});
+    if (h1) appendChips(h1, cache?.frontmatter ?? {});
 
     // Section-aware styling: which section does this block sit in?
     const info = ctx.getSectionInfo(el);
