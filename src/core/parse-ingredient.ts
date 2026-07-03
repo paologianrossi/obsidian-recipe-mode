@@ -66,6 +66,19 @@ function matchUnit(text: string): [string, string] | undefined {
   return undefined;
 }
 
+/**
+ * Split the raw quantity+unit prefix off a line, preserving the original text:
+ * "1,5 l passata" → { prefix: "1,5 l ", rest: "passata" }. For display markup.
+ */
+export function matchQuantityPrefix(line: string): { prefix: string; rest: string } | undefined {
+  const m = line.match(QTY_RE);
+  if (!m || m[0].trim().length === 0 || Number.isNaN(parseNumberToken(m[1]!))) return undefined;
+  let consumed = m[0].length;
+  const unitMatch = matchUnit(line.slice(consumed));
+  if (unitMatch) consumed = line.length - unitMatch[1].length;
+  return { prefix: line.slice(0, consumed), rest: line.slice(consumed) };
+}
+
 export function parseIngredient(line: string): Ingredient {
   const raw = line.trim();
   let text = raw;

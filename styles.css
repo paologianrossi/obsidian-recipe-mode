@@ -144,6 +144,34 @@
   font-style: italic;
 }
 
+/* ===== Reading-mode decorations for recipe notes ===== */
+
+.recipe-reading-chips {
+  margin: 0.4em 0 0.8em;
+}
+
+.recipe-reading .recipe-qty,
+.recipe-reading-ingredients .recipe-qty {
+  color: var(--color-accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.recipe-reading-ingredients ul > li,
+.recipe-reading-ingredients ol > li {
+  padding: 0.15em 0;
+}
+
+.recipe-reading-steps ol > li {
+  margin-bottom: 0.6em;
+  line-height: 1.55;
+}
+
+.recipe-reading-steps ol > li::marker {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
 .recipe-shopping-picker {
   max-height: 45vh;
   overflow-y: auto;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseIngredient, parseNumberToken } from "../src/core/parse-ingredient";
+import { matchQuantityPrefix, parseIngredient, parseNumberToken } from "../src/core/parse-ingredient";
 
 describe("parseNumberToken", () => {
   it("parses integers and decimals", () => {
@@ -111,6 +111,22 @@ describe("parseIngredient — Italiano", () => {
     const i = parseIngredient("300 grammi di farina 00");
     expect(i.quantity?.unit).toBe("g");
     expect(i.name).toBe("farina 00");
+  });
+});
+
+describe("matchQuantityPrefix", () => {
+  it("splits qty+unit from the name, preserving raw text", () => {
+    expect(matchQuantityPrefix("1,5 l passata di pomodoro")).toEqual({
+      prefix: "1,5 l",
+      rest: " passata di pomodoro",
+    });
+    expect(matchQuantityPrefix("2 cucchiai di olio")).toEqual({ prefix: "2 cucchiai", rest: " di olio" });
+  });
+  it("qty only when there is no unit", () => {
+    expect(matchQuantityPrefix("3 uova")).toEqual({ prefix: "3 ", rest: "uova" });
+  });
+  it("undefined for unquantified lines", () => {
+    expect(matchQuantityPrefix("sale q.b.")).toBeUndefined();
   });
 });
 

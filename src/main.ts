@@ -4,6 +4,7 @@ import { COOKING_VIEW_TYPE, CookingView } from "./ui/cooking-view";
 import { NewRecipeModal, formatSelectionAsIngredients } from "./ui/editor-commands";
 import { ImportRecipeModal } from "./ui/import-modal";
 import { ShoppingListModal, createMealPlanNote, shoppingListFromMealPlan } from "./shopping/shopping-list";
+import { registerReadingModeDecorations } from "./ui/reading-mode";
 
 export default class RecipeModePlugin extends Plugin {
   settings: RecipeModeSettings = DEFAULT_SETTINGS;
@@ -13,6 +14,7 @@ export default class RecipeModePlugin extends Plugin {
     this.addSettingTab(new RecipeModeSettingTab(this.app, this));
 
     this.registerView(COOKING_VIEW_TYPE, (leaf) => new CookingView(leaf, this));
+    registerReadingModeDecorations(this);
 
     this.addRibbonIcon("chef-hat", "Open recipe in cooking mode", () => {
       void this.openCookingView();
