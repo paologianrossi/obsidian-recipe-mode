@@ -162,12 +162,14 @@
   padding: 0.15em 0;
 }
 
-.recipe-reading-steps ol > li {
+.recipe-reading-steps ol > li,
+.recipe-reading-steps ul > li {
   margin-bottom: 0.6em;
   line-height: 1.55;
 }
 
-.recipe-reading-steps ol > li::marker {
+.recipe-reading-steps ol > li::marker,
+.recipe-reading-steps ul > li::marker {
   color: var(--color-accent);
   font-weight: 700;
 }
