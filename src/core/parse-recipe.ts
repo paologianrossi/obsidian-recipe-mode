@@ -240,6 +240,43 @@ function parseStepSection(section: Section, steps: Step[]): void {
   if (!sawListItems) flushParagraph();
 }
 
+export type SectionKind = "ingredients" | "steps";
+
+/**
+ * Per-line section membership for a note: a matching heading opens a section,
+ * a non-matching heading at the same or shallower level closes it.
+ * Used by the display layers (reading mode, live preview).
+ */
+export function computeSectionKinds(
+  lines: string[],
+  ingredientHeadings: string[],
+  stepHeadings: string[],
+): (SectionKind | undefined)[] {
+  const kinds: (SectionKind | undefined)[] = new Array(lines.length);
+  let kind: SectionKind | undefined;
+  let level = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const heading = lines[i]!.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      const hLevel = heading[1]!.length;
+      const text = heading[2]!.toLowerCase().replace(/[:.]+$/, "").trim();
+      const match = ingredientHeadings.some((h) => text === h || text.startsWith(h + " "))
+        ? ("ingredients" as const)
+        : stepHeadings.some((h) => text === h || text.startsWith(h + " "))
+          ? ("steps" as const)
+          : undefined;
+      if (match) {
+        kind = match;
+        level = hLevel;
+      } else if (kind && hLevel <= level) {
+        kind = undefined;
+      }
+    }
+    kinds[i] = kind;
+  }
+  return kinds;
+}
+
 /** True when the note carries the recipe tag (frontmatter or inline already merged by caller). */
 export function isRecipeNote(tags: string[], recipeTag: string): boolean {
   const want = recipeTag.replace(/^#/, "").toLowerCase();

@@ -7,6 +7,7 @@
 import { MarkdownPostProcessorContext, getAllTags } from "obsidian";
 import type RecipeModePlugin from "../main";
 import { matchQuantityPrefix } from "../core/parse-ingredient";
+import { computeSectionKinds } from "../core/parse-recipe";
 import { formatDurationLong, parseDuration } from "../core/duration";
 import { splitHeadings } from "../settings";
 
@@ -58,39 +59,17 @@ function appendChips(h1: HTMLElement, fm: Record<string, unknown>): void {
   if (chips.childElementCount > 0) h1.insertAdjacentElement("afterend", chips);
 }
 
-/**
- * Walk the note top-to-bottom (same rules as parse-recipe): a matching heading
- * opens a section, a non-matching heading at the same or shallower level closes it.
- */
 function sectionKindAt(
   noteText: string,
   line: number,
   plugin: RecipeModePlugin,
 ): "ingredients" | "steps" | undefined {
-  const ingredientHeadings = splitHeadings(plugin.settings.ingredientHeadings);
-  const stepHeadings = splitHeadings(plugin.settings.stepHeadings);
-  const lines = noteText.split(/\r?\n/).slice(0, line + 1);
-
-  let kind: "ingredients" | "steps" | undefined;
-  let level = 0;
-  for (const l of lines) {
-    const heading = l.match(/^(#{1,6})\s+(.*)$/);
-    if (!heading) continue;
-    const hLevel = heading[1]!.length;
-    const text = heading[2]!.toLowerCase().replace(/[:.]+$/, "").trim();
-    const match = ingredientHeadings.some((h) => text === h || text.startsWith(h + " "))
-      ? ("ingredients" as const)
-      : stepHeadings.some((h) => text === h || text.startsWith(h + " "))
-        ? ("steps" as const)
-        : undefined;
-    if (match) {
-      kind = match;
-      level = hLevel;
-    } else if (kind && hLevel <= level) {
-      kind = undefined;
-    }
-  }
-  return kind;
+  const kinds = computeSectionKinds(
+    noteText.split(/\r?\n/),
+    splitHeadings(plugin.settings.ingredientHeadings),
+    splitHeadings(plugin.settings.stepHeadings),
+  );
+  return kinds[line];
 }
 
 /** Wrap the leading "400 g" of an ingredient item in a styled span. */
