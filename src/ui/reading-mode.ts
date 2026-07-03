@@ -8,8 +8,8 @@ import { MarkdownPostProcessorContext, getAllTags } from "obsidian";
 import type RecipeModePlugin from "../main";
 import { matchQuantityPrefix } from "../core/parse-ingredient";
 import { computeSectionKinds } from "../core/parse-recipe";
-import { formatDurationLong, parseDuration } from "../core/duration";
 import { splitHeadings } from "../settings";
+import { chipData, renderChips } from "./chips";
 
 export function registerReadingModeDecorations(plugin: RecipeModePlugin): void {
   plugin.registerMarkdownPostProcessor((el, ctx) => {
@@ -38,25 +38,11 @@ export function registerReadingModeDecorations(plugin: RecipeModePlugin): void {
 }
 
 function appendChips(h1: HTMLElement, fm: Record<string, unknown>): void {
-  const chips = createDiv({ cls: "recipe-chips recipe-reading-chips" });
-  const chip = (label: string, value: string) => {
-    const c = chips.createDiv({ cls: "recipe-chip" });
-    c.createSpan({ cls: "recipe-chip-label", text: label });
-    c.createSpan({ cls: "recipe-chip-value", text: value });
-  };
-
-  const servings = fm["servings"] ?? fm["serves"] ?? fm["porzioni"];
-  if (servings !== undefined) chip("Servings", String(servings));
-  const dur = (v: unknown) => parseDuration(typeof v === "string" || typeof v === "number" ? v : undefined);
-  const prep = dur(fm["prep_time"] ?? fm["prepTime"]);
-  const cook = dur(fm["cook_time"] ?? fm["cookTime"]);
-  if (prep !== undefined) chip("Prep", formatDurationLong(prep));
-  if (cook !== undefined) chip("Cook", formatDurationLong(cook));
-  if (prep !== undefined && cook !== undefined) chip("Total", formatDurationLong(prep + cook));
-  const rating = fm["rating"] ?? fm["voto"];
-  if (typeof rating === "number") chip("Rating", "★".repeat(Math.round(rating)));
-
-  if (chips.childElementCount > 0) h1.insertAdjacentElement("afterend", chips);
+  const data = chipData(fm);
+  if (data.length === 0) return;
+  const container = createDiv();
+  renderChips(container, data, "recipe-reading-chips");
+  h1.insertAdjacentElement("afterend", container.firstElementChild as HTMLElement);
 }
 
 function sectionKindAt(
