@@ -47,7 +47,14 @@ describe("toSystem", () => {
   it("no-op when already in system", () => {
     expect(toSystem(100, "g", "metric")).toBeUndefined();
   });
-  it("neutral units (spoons) stay put", () => {
+  it("neutral units (spoons) stay put by default", () => {
     expect(toSystem(2, "tbsp", "metric")).toBeUndefined();
+  });
+  it("neutral units convert when opted in", () => {
+    const r = toSystem(1, "tbsp", "metric", { convertNeutral: true });
+    expect(r?.unit).toBe("ml");
+    expect(r?.value).toBeCloseTo(14.8, 1);
+    const glass = toSystem(1, "glass", "metric", { convertNeutral: true });
+    expect(glass?.value).toBe(200);
   });
 });

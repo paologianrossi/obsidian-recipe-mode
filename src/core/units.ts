@@ -106,10 +106,13 @@ export function toSystem(
   value: number,
   unitId: string,
   system: "metric" | "imperial",
+  opts?: { convertNeutral?: boolean },
 ): { value: number; unit: string } | undefined {
   const unit = byId.get(unitId);
   if (!unit || unit.toBase === undefined) return undefined;
-  if (unit.system === system || unit.system === "neutral") return undefined;
+  if (unit.system === system) return undefined;
+  // Neutral units (spoons, glasses) usually stay put; opt in to convert them.
+  if (unit.system === "neutral" && !opts?.convertNeutral) return undefined;
 
   const base = value * unit.toBase; // g or ml
   // Only convert into everyday units, not colloquial ones (etto, cl, dl…).

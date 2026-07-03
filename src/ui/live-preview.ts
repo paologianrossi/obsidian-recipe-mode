@@ -111,14 +111,17 @@ function conversionText(itemText: string, plugin: RecipeModePlugin): string | un
   const q = ing.quantity;
   if (!q?.unit) return undefined;
   const def = getUnit(q.unit);
-  if (!def || def.toBase === undefined || def.system === "neutral") return undefined;
+  if (!def || def.toBase === undefined) return undefined;
 
   // Annotate only toward the preferred system: with a metric preference,
   // imperial quantities get a metric ghost and metric ones stay clean.
+  // Neutral units (tbsp, cups…) are imperial-native tools: ghost them for
+  // metric users ("1 tbsp ‹15 ml›") but not for imperial users.
   // "As written" means no preference, so no ghosts.
   const target = plugin.settings.unitSystem;
   if (target === "original" || def.system === target) return undefined;
-  const conv = toSystem(q.value, q.unit, target);
+  if (def.system === "neutral" && target === "imperial") return undefined;
+  const conv = toSystem(q.value, q.unit, target, { convertNeutral: true });
   if (!conv) return undefined;
 
   const locale = plugin.settings.locale;

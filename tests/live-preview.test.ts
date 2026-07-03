@@ -74,14 +74,25 @@ describe("buildInline (live preview decorations)", () => {
     expect(result.widgetTexts.join(" | ")).toMatch(/oz/);
   });
 
-  it("metric preference leaves an all-metric recipe clean", () => {
+  it("metric preference ghosts only the non-metric lines", () => {
+    // g and l lines stay clean; the cucchiai (tbsp, neutral) line gets ml
     const result = classify(buildInline(stateOf(DEMO), withSystem("metric")));
-    expect(result.widgets).toBe(0);
-    // but an imperial line gets its metric ghost
+    expect(result.widgets).toBe(1);
+    expect(result.widgetTexts.join(" ")).toMatch(/ml/);
+    // an imperial line gets its metric ghost too
     const mixed = DEMO.replace("- 400 g pasta", "- 2 cups flour");
     const mixedResult = classify(buildInline(stateOf(mixed), withSystem("metric")));
-    expect(mixedResult.widgets).toBe(1);
-    expect(mixedResult.widgetTexts.join(" ")).toMatch(/ml|l/);
+    expect(mixedResult.widgets).toBe(2);
+  });
+
+  it("metric preference ghosts spoon units, imperial preference leaves them alone", () => {
+    // Regression: "1 tbsp extra virgin olive oil" got no ghost because tbsp
+    // is a neutral unit and neutral was skipped outright.
+    const doc = DEMO.replace("- 400 g pasta", "- 1 tbsp extra virgin olive oil");
+    const metric = classify(buildInline(stateOf(doc), withSystem("metric")));
+    expect(metric.widgetTexts.join(" ")).toMatch(/ml/);
+    const imperial = classify(buildInline(stateOf(doc), withSystem("imperial")));
+    expect(imperial.widgetTexts.join(" ")).not.toMatch(/fl oz/);
   });
 
   it("cursor on a line suppresses its conversion widget but keeps the mark", () => {

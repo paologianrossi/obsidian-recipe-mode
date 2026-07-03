@@ -8,7 +8,7 @@ import { registerReadingModeDecorations } from "./ui/reading-mode";
 import { recipeChipsField, recipeLivePreviewExtension } from "./ui/live-preview";
 
 /** Bumped by hand when it matters that the vault copy is current. */
-const BUILD_TAG = "cook-sidebars-1";
+const BUILD_TAG = "ghost-neutral-1";
 
 export default class RecipeModePlugin extends Plugin {
   settings: RecipeModeSettings = DEFAULT_SETTINGS;
