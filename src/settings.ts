@@ -23,6 +23,8 @@ export interface RecipeModeSettings {
   requireTagForStyling: boolean;
   /** Replace reading mode with the cooking view for recipe notes (Cmd+E toggles edit ⇄ cooking). */
   cookingAsReading: boolean;
+  /** Collapse the sidebars while the cooking view is open; restore them on exit. */
+  hideSidebars: boolean;
 }
 
 export const DEFAULT_SETTINGS: RecipeModeSettings = {
@@ -36,6 +38,7 @@ export const DEFAULT_SETTINGS: RecipeModeSettings = {
   downloadImages: false,
   requireTagForStyling: false,
   cookingAsReading: true,
+  hideSidebars: true,
 };
 
 export function splitHeadings(csv: string): string[] {
@@ -119,6 +122,16 @@ export class RecipeModeSettingTab extends PluginSettingTab {
       .addToggle((t) =>
         t.setValue(this.plugin.settings.cookingAsReading).onChange(async (v) => {
           this.plugin.settings.cookingAsReading = v;
+          await this.plugin.saveSettings();
+        }),
+      );
+
+    new Setting(containerEl)
+      .setName("Hide sidebars in cooking mode")
+      .setDesc("Collapse both sidebars while the cooking view is open and restore them when leaving it.")
+      .addToggle((t) =>
+        t.setValue(this.plugin.settings.hideSidebars).onChange(async (v) => {
+          this.plugin.settings.hideSidebars = v;
           await this.plugin.saveSettings();
         }),
       );

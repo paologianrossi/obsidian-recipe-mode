@@ -22,6 +22,8 @@ export class CookingView extends ItemView {
   private checkedSteps = new Set<number>();
   private servingControl: ServingControl | null = null;
   private wakeLock: { release(): Promise<void> } | null = null;
+  /** Sidebar expansion state to restore on close (null = nothing to restore). */
+  private sidebarsToRestore: { left: boolean; right: boolean } | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -70,10 +72,31 @@ export class CookingView extends ItemView {
       if (document.visibilityState === "visible") void this.acquireWakeLock();
     });
     await this.acquireWakeLock();
+    this.hideSidebars();
   }
 
   async onClose(): Promise<void> {
     await this.releaseWakeLock();
+    this.restoreSidebars();
+  }
+
+  private hideSidebars(): void {
+    if (!this.plugin.settings.hideSidebars) return;
+    const ws = this.app.workspace;
+    this.sidebarsToRestore = {
+      left: !ws.leftSplit.collapsed,
+      right: !ws.rightSplit.collapsed,
+    };
+    ws.leftSplit.collapse();
+    ws.rightSplit.collapse();
+  }
+
+  private restoreSidebars(): void {
+    if (!this.sidebarsToRestore) return;
+    const ws = this.app.workspace;
+    if (this.sidebarsToRestore.left) ws.leftSplit.expand();
+    if (this.sidebarsToRestore.right) ws.rightSplit.expand();
+    this.sidebarsToRestore = null;
   }
 
   getState(): Record<string, unknown> {
