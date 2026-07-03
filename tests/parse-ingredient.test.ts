@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchQuantityPrefix, parseIngredient, parseNumberToken } from "../src/core/parse-ingredient";
+import { findInlineQuantities, matchQuantityPrefix, parseIngredient, parseNumberToken } from "../src/core/parse-ingredient";
 
 describe("parseNumberToken", () => {
   it("parses integers and decimals", () => {
@@ -127,6 +127,34 @@ describe("matchQuantityPrefix", () => {
   });
   it("undefined for unquantified lines", () => {
     expect(matchQuantityPrefix("sale q.b.")).toBeUndefined();
+  });
+});
+
+describe("findInlineQuantities", () => {
+  it("finds a quantity inside prose parentheses", () => {
+    const qs = findInlineQuantities("Add salt (2 tsp for a small jar)");
+    expect(qs).toHaveLength(1);
+    expect(qs[0]!.quantity).toEqual({ value: 2, unit: "tsp" });
+    expect("Add salt (2 tsp for a small jar)".slice(qs[0]!.start, qs[0]!.end)).toBe("2 tsp");
+  });
+  it("finds multiple quantities in one sentence", () => {
+    const qs = findInlineQuantities("aggiungere 200 ml di latte e 2 cucchiai di zucchero");
+    expect(qs.map((q) => q.quantity.unit)).toEqual(["ml", "tbsp"]);
+  });
+  it("unit at end of sentence", () => {
+    const qs = findInlineQuantities("then add 50 g");
+    expect(qs).toHaveLength(1);
+    expect(qs[0]!.quantity.value).toBe(50);
+  });
+  it("ignores bare numbers and unknown units", () => {
+    expect(findInlineQuantities("Rest 30-60 minutes.")).toHaveLength(0);
+    expect(findInlineQuantities("wheat flour type 1, low strength")).toHaveLength(0);
+    expect(findInlineQuantities("Preheat to 200 °C")).toHaveLength(0);
+    expect(findInlineQuantities("Fill a jar with onions")).toHaveLength(0);
+  });
+  it("ranges", () => {
+    const qs = findInlineQuantities("use 2-3 tbsp of oil");
+    expect(qs[0]!.quantity).toEqual({ value: 2, unit: "tbsp", rangeEnd: 3 });
   });
 });
 

@@ -6,7 +6,7 @@
 
 import { MarkdownPostProcessorContext, getAllTags } from "obsidian";
 import type RecipeModePlugin from "../main";
-import { matchQuantityPrefix } from "../core/parse-ingredient";
+import { findInlineQuantities, matchQuantityPrefix } from "../core/parse-ingredient";
 import { computeSectionKinds } from "../core/parse-recipe";
 import { splitHeadings } from "../settings";
 import { chipData, renderChips } from "./chips";
@@ -35,8 +35,31 @@ export function registerReadingModeDecorations(plugin: RecipeModePlugin): void {
       el.querySelectorAll("li").forEach((li) => highlightQuantity(li));
     } else if (kind === "steps") {
       el.addClass("recipe-reading-steps");
+      highlightInlineQuantities(el);
     }
   });
+}
+
+/** Wrap "2 tsp"-style quantities inside step prose in styled spans. */
+function highlightInlineQuantities(root: HTMLElement): void {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes: Text[] = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) nodes.push(n as Text);
+
+  for (const node of nodes) {
+    const text = node.textContent ?? "";
+    const quantities = findInlineQuantities(text);
+    if (quantities.length === 0) continue;
+    const frag = document.createDocumentFragment();
+    let pos = 0;
+    for (const q of quantities) {
+      frag.append(text.slice(pos, q.start));
+      frag.append(createSpan({ cls: "recipe-qty", text: text.slice(q.start, q.end) }));
+      pos = q.end;
+    }
+    frag.append(text.slice(pos));
+    node.replaceWith(frag);
+  }
 }
 
 function appendChips(h1: HTMLElement, fm: Record<string, unknown>): void {

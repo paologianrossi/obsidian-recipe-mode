@@ -79,6 +79,46 @@ export function matchQuantityPrefix(line: string): { prefix: string; rest: strin
   return { prefix: line.slice(0, consumed), rest: line.slice(consumed) };
 }
 
+export interface InlineQuantity {
+  /** Character offsets into the scanned text. */
+  start: number;
+  end: number;
+  quantity: Quantity;
+}
+
+/**
+ * Find quantity+unit occurrences anywhere in prose ("Add salt (2 tsp for a
+ * small jar)"). Only number+known-unit pairs match — bare numbers ("type 1",
+ * "rest 30 minutes") are left alone, so step text stays quiet unless the
+ * unit is a real measurement.
+ */
+export function findInlineQuantities(text: string): InlineQuantity[] {
+  const out: InlineQuantity[] = [];
+  const numRe = new RegExp(
+    `(${NUMBER_RE.source})(?:\\s*[-–—]\\s*(${NUMBER_RE.source}))?`,
+    "g",
+  );
+  for (const m of text.matchAll(numRe)) {
+    // must start at a word boundary ("00" in "farina 00" is fine, "x2" is not)
+    if (m.index > 0 && /[\w°%€$.,]/.test(text[m.index - 1]!)) continue;
+    const afterNum = m.index + m[0].length;
+    const ws = text.slice(afterNum).match(/^[ \t]*/)![0].length;
+    const token = text.slice(afterNum + ws).match(/^([^\s,().;:!?]+)/);
+    if (!token) continue;
+    const unit = findUnit(token[1]!);
+    if (!unit) continue;
+    const value = parseNumberToken(m[1]!);
+    if (Number.isNaN(value)) continue;
+    const quantity: Quantity = { value, unit: unit.id };
+    if (m[2]) {
+      const rangeEnd = parseNumberToken(m[2]);
+      if (!Number.isNaN(rangeEnd)) quantity.rangeEnd = rangeEnd;
+    }
+    out.push({ start: m.index, end: afterNum + ws + token[1]!.length, quantity });
+  }
+  return out;
+}
+
 export function parseIngredient(line: string): Ingredient {
   const raw = line.trim();
   let text = raw;

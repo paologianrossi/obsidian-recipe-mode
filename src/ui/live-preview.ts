@@ -14,7 +14,8 @@ import { EditorState, RangeSetBuilder, StateField } from "@codemirror/state";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate, WidgetType } from "@codemirror/view";
 import { editorInfoField, getAllTags } from "obsidian";
 import type RecipeModePlugin from "../main";
-import { matchQuantityPrefix, parseIngredient } from "../core/parse-ingredient";
+import { findInlineQuantities, matchQuantityPrefix, parseIngredient } from "../core/parse-ingredient";
+import type { Quantity } from "../types";
 import { computeSectionKinds, parseFrontmatter } from "../core/parse-recipe";
 import { formatValue } from "../core/scale";
 import { displayUnit, getUnit, toSystem } from "../core/units";
@@ -106,9 +107,7 @@ class ConversionWidget extends WidgetType {
 
 const QTY_MARK = Decoration.mark({ class: "recipe-qty" });
 
-function conversionText(itemText: string, plugin: RecipeModePlugin): string | undefined {
-  const ing = parseIngredient(itemText);
-  const q = ing.quantity;
+function ghostText(q: Quantity | undefined, plugin: RecipeModePlugin): string | undefined {
   if (!q?.unit) return undefined;
   const def = getUnit(q.unit);
   if (!def || def.toBase === undefined) return undefined;
@@ -141,44 +140,61 @@ export function buildInline(state: EditorState, plugin: RecipeModePlugin): Decor
   );
   const cursorLine = doc.lineAt(state.selection.main.head).number - 1;
 
-  const builder = new RangeSetBuilder<Decoration>();
+  // Collect first, then sort: marks and ghosts come from several scanners and
+  // RangeSetBuilder insists on sorted input.
+  const ranges: { from: number; to: number; deco: Decoration }[] = [];
+  const mark = (from: number, to: number) => ranges.push({ from, to, deco: QTY_MARK });
+  const ghost = (at: number, q: Quantity | undefined) => {
+    const text = ghostText(q, plugin);
+    if (text) ranges.push({ from: at, to: at, deco: Decoration.widget({ widget: new ConversionWidget(text), side: 1 }) });
+  };
+
   for (let i = 0; i < lines.length; i++) {
     const kind = kinds[i];
     if (!kind) continue;
     const text = lines[i]!;
     const line = doc.line(i + 1);
+    const editingHere = i === cursorLine;
 
     if (kind === "steps") {
-      builder.add(line.from, line.from, Decoration.line({ class: "recipe-lp-steps" }));
+      ranges.push({ from: line.from, to: line.from, deco: Decoration.line({ class: "recipe-lp-steps" }) });
+      // Quantities inside step prose: "Add salt (2 tsp for a small jar)".
+      for (const iq of findInlineQuantities(text)) {
+        mark(line.from + iq.start, line.from + iq.end);
+        if (!editingHere) ghost(line.from + iq.end, iq.quantity);
+      }
       continue;
     }
 
     // --- ingredients section ---
     const item = text.match(LIST_ITEM_RE);
     const classes = ["recipe-lp-ingredients"];
-    const editingHere = i === cursorLine;
 
     if (item && item[2]!.trim()) {
       const ing = parseIngredient(item[2]!);
       // No quantity and not a "q.b." line: scaling and shopping lists can't use it.
       if (!ing.quantity && ing.note !== "q.b." && !editingHere) classes.push("recipe-lp-noqty");
     }
-    builder.add(line.from, line.from, Decoration.line({ class: classes.join(" ") }));
+    ranges.push({ from: line.from, to: line.from, deco: Decoration.line({ class: classes.join(" ") }) });
 
     if (!item) continue;
+    const itemStart = line.from + item[1]!.length;
     const split = matchQuantityPrefix(item[2]!);
-    if (!split) continue;
-    const from = line.from + item[1]!.length;
-    const to = from + split.prefix.trimEnd().length;
-    builder.add(from, to, QTY_MARK);
-
-    if (!editingHere) {
-      const conv = conversionText(item[2]!, plugin);
-      if (conv) {
-        builder.add(to, to, Decoration.widget({ widget: new ConversionWidget(conv), side: 1 }));
-      }
+    if (split) {
+      mark(itemStart, itemStart + split.prefix.trimEnd().length);
+      if (!editingHere) ghost(itemStart + split.prefix.trimEnd().length, parseIngredient(item[2]!).quantity);
+    }
+    // Additional quantities later in the line ("burro (50 g)").
+    const restOffset = split ? split.prefix.length : 0;
+    for (const iq of findInlineQuantities(item[2]!.slice(restOffset))) {
+      mark(itemStart + restOffset + iq.start, itemStart + restOffset + iq.end);
+      if (!editingHere) ghost(itemStart + restOffset + iq.end, iq.quantity);
     }
   }
+
+  ranges.sort((a, b) => a.from - b.from || a.deco.startSide - b.deco.startSide);
+  const builder = new RangeSetBuilder<Decoration>();
+  for (const r of ranges) builder.add(r.from, r.to, r.deco);
   return builder.finish();
 }
 

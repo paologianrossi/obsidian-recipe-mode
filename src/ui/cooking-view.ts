@@ -1,8 +1,9 @@
 import { ItemView, Scope, TFile, WorkspaceLeaf } from "obsidian";
 import type RecipeModePlugin from "../main";
 import type { Recipe } from "../types";
+import { findInlineQuantities } from "../core/parse-ingredient";
 import { parseRecipe } from "../core/parse-recipe";
-import { formatIngredient, servingsFactor } from "../core/scale";
+import { formatIngredient, formatQuantity, scaleQuantity, servingsFactor, type FormatOptions } from "../core/scale";
 import { formatDurationLong } from "../core/duration";
 import { splitHeadings } from "../settings";
 import { ServingControl } from "./serving-control";
@@ -192,6 +193,7 @@ export class CookingView extends ItemView {
       this.servingControl = new ServingControl(servingsWrap, this.targetServings, (v) => {
         this.targetServings = v;
         this.renderIngredients();
+        this.renderSteps();
       });
     }
     const unitBtn = controls.createEl("button", { cls: "recipe-unit-toggle" });
@@ -203,33 +205,59 @@ export class CookingView extends ItemView {
         this.unitSystem === "original" ? "metric" : this.unitSystem === "metric" ? "imperial" : "original";
       unitBtn.setText(unitLabel());
       this.renderIngredients();
+      this.renderSteps();
     });
 
     // --- body: ingredients | steps ---
     const body = root.createDiv({ cls: "recipe-body" });
     body.createDiv({ cls: "recipe-ingredients-pane" });
-    const stepsPane = body.createDiv({ cls: "recipe-steps-pane" });
+    body.createDiv({ cls: "recipe-steps-pane" });
 
     this.renderIngredients();
+    this.renderSteps();
 
-    stepsPane.createEl("h2", { text: "Steps" });
-    const stepsList = stepsPane.createEl("ol", { cls: "recipe-steps" });
+    if (recipe.source) {
+      const src = root.createDiv({ cls: "recipe-source" });
+      src.createEl("a", { text: recipe.source, href: recipe.source });
+    }
+  }
+
+  /** Steps re-render when servings/units change: quantities inside step prose scale too. */
+  private renderSteps(): void {
+    const pane = this.contentEl.querySelector<HTMLElement>(".recipe-steps-pane");
+    if (!pane || !this.recipe) return;
+    pane.empty();
+    const recipe = this.recipe;
+    const factor = servingsFactor(recipe.servings, this.targetServings);
+    const opts: FormatOptions = {
+      locale: this.plugin.settings.locale,
+      targetSystem: this.unitSystem === "original" ? undefined : this.unitSystem,
+    };
+
+    pane.createEl("h2", { text: "Steps" });
+    const stepsList = pane.createEl("ol", { cls: "recipe-steps" });
     recipe.steps.forEach((step, i) => {
       const li = stepsList.createEl("li", { cls: "recipe-step" });
       if (this.checkedSteps.has(i)) li.addClass("is-done");
-      li.createSpan({ text: step.text });
+      this.renderStepText(li.createSpan(), step.text, factor, opts);
       li.addEventListener("click", () => {
         if (this.checkedSteps.has(i)) this.checkedSteps.delete(i);
         else this.checkedSteps.add(i);
         li.toggleClass("is-done", this.checkedSteps.has(i));
       });
     });
-    if (recipe.steps.length === 0) stepsPane.createEl("p", { text: "No steps found.", cls: "recipe-empty" });
+    if (recipe.steps.length === 0) pane.createEl("p", { text: "No steps found.", cls: "recipe-empty" });
+  }
 
-    if (recipe.source) {
-      const src = root.createDiv({ cls: "recipe-source" });
-      src.createEl("a", { text: recipe.source, href: recipe.source });
+  /** Render step prose, scaling and converting inline quantities ("2 tsp" → "1 tsp" at half servings). */
+  private renderStepText(parent: HTMLElement, text: string, factor: number, opts: FormatOptions): void {
+    let pos = 0;
+    for (const iq of findInlineQuantities(text)) {
+      parent.appendText(text.slice(pos, iq.start));
+      parent.createSpan({ cls: "recipe-qty", text: formatQuantity(scaleQuantity(iq.quantity, factor), opts) });
+      pos = iq.end;
     }
+    parent.appendText(text.slice(pos));
   }
 
   /** Ingredients re-render alone when servings/units change; checkboxes keep state. */

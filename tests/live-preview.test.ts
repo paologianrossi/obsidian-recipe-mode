@@ -95,6 +95,15 @@ describe("buildInline (live preview decorations)", () => {
     expect(imperial.widgetTexts.join(" ")).not.toMatch(/fl oz/);
   });
 
+  it("quantities inside step prose get marks and ghosts", () => {
+    // Regression: "Add salt (2 tsp for a small jar)" in the directions was ignored.
+    const doc = DEMO + "2. Add salt (2 tsp for a small jar).\n3. Rest 30-60 minutes.\n";
+    const result = classify(buildInline(stateOf(doc), withSystem("metric")));
+    const before = classify(buildInline(stateOf(DEMO), withSystem("metric")));
+    expect(result.marks).toBe(before.marks + 1); // the 2 tsp, not the 30-60
+    expect(result.widgetTexts.some((t) => /ml/.test(t))).toBe(true);
+  });
+
   it("cursor on a line suppresses its conversion widget but keeps the mark", () => {
     const pos = DEMO.indexOf("400 g");
     const state = EditorState.create({ doc: DEMO, selection: { anchor: pos } });
